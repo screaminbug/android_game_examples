@@ -10,7 +10,9 @@ import static android.hardware.SensorManager.SENSOR_STATUS_ACCURACY_LOW;
 import static android.hardware.SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM;
 import static android.hardware.SensorManager.SENSOR_STATUS_UNRELIABLE;
 import android.app.Activity;
-import android.hardware.SensorListener;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.view.View;
@@ -23,8 +25,9 @@ import android.widget.TextView;
  * 
  * @author Eric M. Burke
  */
-public class Accel extends Activity implements SensorListener, OnClickListener {
+public class Accel extends Activity implements SensorEventListener, OnClickListener {
 	private SensorManager sensorMgr;
+	private Sensor asensor;
 	private TextView accuracyLabel;
 	private TextView xLabel, yLabel, zLabel;
 	private Button calibrateButton;
@@ -52,7 +55,7 @@ public class Accel extends Activity implements SensorListener, OnClickListener {
 	protected void onPause() {
 		super.onPause();
 		
-		sensorMgr.unregisterListener(this, SENSOR_ACCELEROMETER);
+		sensorMgr.unregisterListener(this);
 		sensorMgr = null;
 		
 		cx = 0;
@@ -64,14 +67,15 @@ public class Accel extends Activity implements SensorListener, OnClickListener {
 	protected void onResume() {
 		super.onResume();
 		
+		
 		sensorMgr = (SensorManager) getSystemService(SENSOR_SERVICE);
-		boolean accelSupported = sensorMgr.registerListener(this, 
-				SENSOR_ACCELEROMETER,
-				SENSOR_DELAY_UI);
+		asensor = (Sensor) sensorMgr.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+		boolean accelSupported = sensorMgr.registerListener(this, asensor, SENSOR_DELAY_UI);
+		
 		
 		if (!accelSupported) {
 			// on accelerometer on this device
-			sensorMgr.unregisterListener(this, SENSOR_ACCELEROMETER);
+			sensorMgr.unregisterListener(this);
 			accuracyLabel.setText(R.string.no_accelerometer);
 		}
 	}
@@ -100,23 +104,7 @@ public class Accel extends Activity implements SensorListener, OnClickListener {
 
 	// from the android.hardware.SensorListener interface
 	public void onSensorChanged(int sensor, float[] values) {
-		if (sensor == SENSOR_ACCELEROMETER) {
-			long curTime = System.currentTimeMillis();
-			// only allow one update every 100ms, otherwise updates
-			// come way too fast and the phone gets bogged down
-			// with garbage collection
-			if (lastUpdate == -1 || (curTime - lastUpdate) > 100) {
-				lastUpdate = curTime;
-				
-				x = values[DATA_X];
-				y = values[DATA_Y];
-				z = values[DATA_Z];
-				
-				xLabel.setText(String.format("X: %+2.5f (%+2.5f)", (x+cx), cx));
-				yLabel.setText(String.format("Y: %+2.5f (%+2.5f)", (y+cy), cy));
-				zLabel.setText(String.format("Z: %+2.5f (%+2.5f)", (z+cz), cz));
-			}
-		}
+		
 	}
 
 	public void onClick(View v) {
@@ -124,6 +112,32 @@ public class Accel extends Activity implements SensorListener, OnClickListener {
 			cx = -x;
 			cy = -y;
 			cz = -z;
+		}
+	}
+
+	public void onAccuracyChanged(Sensor sensor, int accuracy) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public void onSensorChanged(SensorEvent event) {
+		// TODO Auto-generated method stub
+		if (event.sensor.getType() == SENSOR_ACCELEROMETER) {
+			long curTime = System.currentTimeMillis();
+			// only allow one update every 100ms, otherwise updates
+			// come way too fast and the phone gets bogged down
+			// with garbage collection
+			if (lastUpdate == -1 || (curTime - lastUpdate) > 100) {
+				lastUpdate = curTime;
+				
+				x = event.values[DATA_X];
+				y = event.values[DATA_Y];
+				z = event.values[DATA_Z];
+				
+				xLabel.setText(String.format("X: %+2.5f (%+2.5f)", (x+cx), cx));
+				yLabel.setText(String.format("Y: %+2.5f (%+2.5f)", (y+cy), cy));
+				zLabel.setText(String.format("Z: %+2.5f (%+2.5f)", (z+cz), cz));
+			}
 		}
 	}
 }

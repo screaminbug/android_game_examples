@@ -11,7 +11,9 @@ import android.app.Activity;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.hardware.SensorListener;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Vibrator;
@@ -24,7 +26,7 @@ import android.view.SurfaceHolder.Callback;
  * accelerometer acts as gravity on the ball. When the ball hits
  * the edge, it bounces back and triggers the phone vibrator.
  */
-public class BouncingBallActivity extends Activity implements Callback, SensorListener {
+public class BouncingBallActivity extends Activity implements Callback, SensorEventListener {
 	private static final int BALL_RADIUS = 20;
 	private SurfaceView surface;
 	private SurfaceHolder holder;
@@ -33,6 +35,7 @@ public class BouncingBallActivity extends Activity implements Callback, SensorLi
 	private Paint backgroundPaint;
 	private Paint ballPaint;
 	private SensorManager sensorMgr;
+	private Sensor asensor;
 	private long lastSensorUpdate = -1;
 
 	@Override
@@ -59,7 +62,7 @@ public class BouncingBallActivity extends Activity implements Callback, SensorLi
 		
 		model.setVibrator(null);
 		
-		sensorMgr.unregisterListener(this, SENSOR_ACCELEROMETER);
+		sensorMgr.unregisterListener(this);
 		sensorMgr = null;
 		
 		model.setAccel(0, 0);
@@ -70,13 +73,14 @@ public class BouncingBallActivity extends Activity implements Callback, SensorLi
 		super.onResume();
 		
 		sensorMgr = (SensorManager) getSystemService(SENSOR_SERVICE);
+		asensor = (Sensor) sensorMgr.getDefaultSensor(SENSOR_ACCELEROMETER);
 		boolean accelSupported = sensorMgr.registerListener(this, 
-				SENSOR_ACCELEROMETER,
+				asensor,
 				SENSOR_DELAY_GAME);
 		
 		if (!accelSupported) {
 			// on accelerometer on this device
-			sensorMgr.unregisterListener(this, SENSOR_ACCELEROMETER);
+			sensorMgr.unregisterListener(this);
 			// TODO show an error
 		}
 		
@@ -165,18 +169,23 @@ public class BouncingBallActivity extends Activity implements Callback, SensorLi
 		}
 	}
 
-	public void onAccuracyChanged(int sensor, int accuracy) {		
+	
+
+	public void onAccuracyChanged(Sensor sensor, int accuracy) {
+		// TODO Auto-generated method stub
+		
 	}
 
-	public void onSensorChanged(int sensor, float[] values) {
-		if (sensor == SENSOR_ACCELEROMETER) {
+	public void onSensorChanged(SensorEvent event) {
+		// TODO Auto-generated method stub
+		if (event.sensor.getType() == SENSOR_ACCELEROMETER) {
 			long curTime = System.currentTimeMillis();
 			// only allow one update every 50ms, otherwise updates
 			// come way too fast
 			if (lastSensorUpdate == -1 || (curTime - lastSensorUpdate) > 50) {
 				lastSensorUpdate = curTime;
 				
-				model.setAccel(values[DATA_X], values[DATA_Y]);
+				model.setAccel(event.values[DATA_X], event.values[DATA_Y]);
 			}
 		}
 	}
